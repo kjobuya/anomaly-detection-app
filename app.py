@@ -72,6 +72,7 @@ class MyApp(QtWidgets.QMainWindow):
     def next(self):
         if self.current_page == self.pages_dict["folder paths"]:
             # need to load images from paths
+            # todo: add thread to provide info when images are loading
             if self.nominal_path and self.defect_path:
                 nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
                 defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]

@@ -1,0 +1,6 @@
+-   add thread to display info when images are being loaded
+-   add dataset information using group box and labels when displaying images
+-   implement region of interest definition for images
+-   visibility of next and previous buttons to be toggled depending on page and current state
+-   App reset button
+-   Last and first buttons when viewing images

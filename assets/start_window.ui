@@ -71,7 +71,7 @@ border-color: rgb(0, 0, 0);</string>
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="file_paths">
+    <widget class="QWidget" name="folder_paths">
      <widget class="QComboBox" name="nominalComboBox">
       <property name="geometry">
        <rect>
@@ -161,6 +161,9 @@ border-color: rgb(0, 0, 0);</string>
       </property>
       <property name="text">
        <string/>
+      </property>
+      <property name="scaledContents">
+       <bool>true</bool>
       </property>
      </widget>
      <widget class="QPushButton" name="prevNominalImageButton">

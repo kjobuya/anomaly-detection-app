@@ -41,6 +41,16 @@ class MyApp(QtWidgets.QMainWindow):
         self.show()
         
     def reset(self):
+        """
+        Resets the application state to its initial values.
+        
+        Parameters:
+            None
+        
+        Returns:
+            None
+        """
+        
         self.nominal_path = None
         self.defect_path = None
         self.displayed_nominal_img_idx = 0
@@ -51,9 +61,28 @@ class MyApp(QtWidgets.QMainWindow):
         self.defectComboBox.clear()
         
     def view_change(self):
+        """
+    	Changes the current view of the application by setting the current index of the stacked widget.
+    	
+    	Parameters:
+    		None
+    	
+    	Returns:
+    		None
+    	"""
+          
         self.stackedWidget.setCurrentIndex(self.current_page)
         
     def load_images(self, images_paths):
+        """
+        Loads a list of images from the provided paths.
+
+        Parameters:
+            images_paths (list): A list of paths to the images to be loaded.
+
+        Returns:
+            list: A list of loaded images.
+        """
         images = []
         for image_path in images_paths:
             image = cv2.imread(image_path)
@@ -62,13 +91,23 @@ class MyApp(QtWidgets.QMainWindow):
         return images
     
     def display_img(self, image, label:QLabel):                      
+        """
+        Display an image on a QLabel.
+
+        Args:
+            image (numpy.ndarray): The image to be displayed.
+            label (QtWidgets.QLabel): The QLabel on which the image will be displayed.
+
+        Returns:
+            None
+        """
         disp_img = ConvertCVArray2QPixmap(image)
         label.setPixmap(disp_img)
         
     def display_nominal_img(self):
         self.display_img(self.nominal_images[self.displayed_nominal_img_idx], self.nominalImageDisplayLabel)
                
-    # event handlers functions    
+    # EVENT HANDLERS 
     def next(self):
         if self.current_page == self.pages_dict["folder paths"]:
             # need to load images from paths

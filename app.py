@@ -12,7 +12,7 @@ import time
 
 class MyApp(QtWidgets.QMainWindow):
     
-    loading_progress_signal = pyqtSignal(int)
+    loading_progress_signal = pyqtSignal(int) # used to communicate with loading dialog box
     
     def __init__(self):
         super().__init__()
@@ -21,6 +21,7 @@ class MyApp(QtWidgets.QMainWindow):
             "home": 0,
             "folder paths": 1,
             "nominal samples": 2,
+            "defect samples": 3
         }
         
         loadUi(r'assets\start_window.ui', self)  # Load the .ui file
@@ -37,6 +38,8 @@ class MyApp(QtWidgets.QMainWindow):
         self.addDefectPathButton.clicked.connect(self.addDefectPath)
         self.nextNominalImageButton.clicked.connect(self.nextNominalImage)
         self.prevNominalImageButton.clicked.connect(self.prevNominalImage)
+        self.nextDefectImageButton.clicked.connect(self.nextDefectImage)
+        self.prevDefectImageButton.clicked.connect(self.prevDefectImage)
         
         # ComboBox events
         self.nominalComboBox.currentIndexChanged.connect(self.on_nominalComboBox_changed)
@@ -65,6 +68,7 @@ class MyApp(QtWidgets.QMainWindow):
         self.total_images_loaded = 0
         
         self.displayed_nominal_img_idx = 0
+        self.displayed_defect_img_idx = 0
         
         self.nominal_images = []
         self.defect_images = []
@@ -107,7 +111,7 @@ class MyApp(QtWidgets.QMainWindow):
                 dst.append(image)
                 self.total_images_loaded += 1
                 self.loading_progress_signal.emit(self.total_images_loaded)
-                print(self.total_images_loaded)
+                # print(self.total_images_loaded)
             finally:
                 mutex.unlock()
             
@@ -129,10 +133,13 @@ class MyApp(QtWidgets.QMainWindow):
         
     def display_nominal_img(self):
         self.display_img(self.nominal_images[self.displayed_nominal_img_idx], self.nominalImageDisplayLabel)
+        
+    def display_defect_img(self):
+        self.display_img(self.defect_images[self.displayed_defect_img_idx], self.defectImageDisplayLabel)
                
     # EVENT HANDLERS 
     def next(self):
-        if self.current_page == self.pages_dict["folder paths"]:
+        if self.current_page+1 == self.pages_dict["nominal samples"]:
             # need to load images from paths
             if self.nominal_path and self.defect_path:
                 nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
@@ -147,13 +154,15 @@ class MyApp(QtWidgets.QMainWindow):
                 self.defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
                 self.defect_loader_thread.start()
                 
-                dialog_box = LoadingDialog(self, "Loading nominal images", self.no_of_nominal_images+self.no_of_defect_images)
+                dialog_box = LoadingDialog(self, "Loading images", self.no_of_nominal_images+self.no_of_defect_images)
                 dialog_box.exec()
-                
                 
                 self.nominal_loader_thread.wait()
                 self.defect_loader_thread.wait()
                 self.display_nominal_img()
+                
+        if self.current_page+1 == self.pages_dict["defect samples"]:
+                self.display_defect_img()
                 
                       
         if self.current_page != self.num_widgets - 1:
@@ -193,21 +202,28 @@ class MyApp(QtWidgets.QMainWindow):
             self.displayed_nominal_img_idx -= 1
             self.display_nominal_img()
             
+    def nextDefectImage(self):
+        if self.displayed_defect_img_idx < len(self.defect_images) - 1:
+            self.displayed_defect_img_idx += 1
+            self.display_defect_img()
+            
+    def prevDefectImage(self):
+        if self.displayed_defect_img_idx > 0:
+            self.displayed_defect_img_idx -= 1
+            self.display_defect_img()
+            
 class LoadingDialog(QDialog):
     def __init__(self, parent, label_text: str, completion_count: int):
         super().__init__()
                 
         loadUi(r'assets\loading_dialog.ui', self)  # Load the .ui file
         
-        self.setWindowTitle("Loading...")
+        self.setWindowTitle(label_text)
         
-        self.loadingScreenLabel.setText(label_text)
+        self.loadingScreenLabel.setText("Loading...")
         
         self.progressBar.setValue(0)
         self.progressBar.setRange(0, completion_count)
-        
-        # self.thread = WorkerThread(0, self.update_progress_bar, var)
-        # self.thread.start()
         
         parent.loading_progress_signal.connect(self.update_progress_bar)
                 

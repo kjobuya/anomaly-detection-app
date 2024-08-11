@@ -2,6 +2,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QVBoxLayout, QLabel, QComboBox, QPushButton
 from PyQt5.QtGui import QImage, QPixmap, QCursor, QColor
 from PyQt5.uic import loadUi
+from PyQt5.QtCore import QThread, QMutex, QMutexLocker
 
 from utilities import *
 
@@ -53,9 +54,14 @@ class MyApp(QtWidgets.QMainWindow):
         
         self.nominal_path = None
         self.defect_path = None
+        self.no_of_nominal_images = 0
+        self.no_of_defect_images = 0
         self.displayed_nominal_img_idx = 0
         self.nominal_images = []
         self.defect_images = []
+        
+        self.nominal_images_mutex = QMutex()
+        self.defect_images_mutex = QMutex()
         
         self.nominalComboBox.clear()
         self.defectComboBox.clear()
@@ -73,7 +79,7 @@ class MyApp(QtWidgets.QMainWindow):
           
         self.stackedWidget.setCurrentIndex(self.current_page)
         
-    def load_images(self, images_paths):
+    def load_images(self, images_paths, dst, mutex):
         """
         Loads a list of images from the provided paths.
 
@@ -83,12 +89,17 @@ class MyApp(QtWidgets.QMainWindow):
         Returns:
             list: A list of loaded images.
         """
-        images = []
+        
+        # images = []
         for image_path in images_paths:
             image = cv2.imread(image_path)
-            images.append(image)
+            mutex.lock()
+            try:
+                dst.append(image)
+            finally:
+                mutex.unlock()
             
-        return images
+        return dst
     
     def display_img(self, image, label:QLabel):                      
         """
@@ -111,14 +122,24 @@ class MyApp(QtWidgets.QMainWindow):
     def next(self):
         if self.current_page == self.pages_dict["folder paths"]:
             # need to load images from paths
-            # todo: add thread to provide info when images are loading
             if self.nominal_path and self.defect_path:
                 nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
                 defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]
                 
-                self.nominal_images = self.load_images(nominal_images_paths)
-                self.defect_images = self.load_images(defect_images_paths)
+                self.no_of_nominal_images = len(nominal_images_paths)
+                self.no_of_defect_images = len(defect_images_paths)
                 
+                self.nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.nominal_images_mutex)
+                self.nominal_loader_thread.start()
+
+                self.defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.defect_images_mutex)
+                self.defect_loader_thread.start()
+                
+                # self.load_images(nominal_images_paths, self.nominal_images)
+                # self.load_images(defect_images_paths, self.defect_images)
+                
+                self.nominal_loader_thread.wait()
+                self.defect_loader_thread.wait()
                 self.display_nominal_img()
                 
                       
@@ -158,3 +179,25 @@ class MyApp(QtWidgets.QMainWindow):
         if self.displayed_nominal_img_idx > 0:
             self.displayed_nominal_img_idx -= 1
             self.display_nominal_img()
+            
+class LoadingDialog(QDialog):
+    def __init__(self, label_text: str, completion_count: int, var):
+        super().__init__()
+        
+        loadUi(r'assets\loading_window.ui', self)  # Load the .ui file
+        
+        self.setWindowTitle("Loading...")
+        self.setFixedSize(200, 200)
+        
+        self.loadingScreenLabel.setText(label_text)
+             
+class WorkerThread(QThread):
+    def __init__(self, thread_id, func, *args, **kwargs):
+        super().__init__()
+        self.thread_id = thread_id
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    def run(self):
+        self.func(*self.args, **self.kwargs)

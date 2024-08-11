@@ -8,6 +8,7 @@ from utilities import *
 
 import os
 import cv2
+import time
 
 class MyApp(QtWidgets.QMainWindow):
     def __init__(self):
@@ -89,8 +90,7 @@ class MyApp(QtWidgets.QMainWindow):
         Returns:
             list: A list of loaded images.
         """
-        
-        # images = []
+                   
         for image_path in images_paths:
             image = cv2.imread(image_path)
             mutex.lock()
@@ -131,6 +131,8 @@ class MyApp(QtWidgets.QMainWindow):
                 
                 self.nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.nominal_images_mutex)
                 self.nominal_loader_thread.start()
+                dialog_box = LoadingDialog("Loading nominal images", self.no_of_nominal_images, self.nominal_images, self.nominal_images_mutex)
+                dialog_box.exec()
 
                 self.defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.defect_images_mutex)
                 self.defect_loader_thread.start()
@@ -181,15 +183,40 @@ class MyApp(QtWidgets.QMainWindow):
             self.display_nominal_img()
             
 class LoadingDialog(QDialog):
-    def __init__(self, label_text: str, completion_count: int, var):
+    def __init__(self, label_text: str, completion_count: int, var, mutex: QMutex):
         super().__init__()
         
-        loadUi(r'assets\loading_window.ui', self)  # Load the .ui file
+        self.mutex = mutex
+        
+        loadUi(r'assets\loading_dialog.ui', self)  # Load the .ui file
         
         self.setWindowTitle("Loading...")
-        self.setFixedSize(200, 200)
+        # self.setFixedSize(200, 200)
         
         self.loadingScreenLabel.setText(label_text)
+        
+        self.progressBar.setValue(0)
+        self.progressBar.setRange(0, completion_count)
+        
+        self.thread = WorkerThread(0, self.update_progress_bar, var)
+        self.thread.start()
+                
+    def update_progress_bar(self, var):
+        while True:
+            self.mutex.lock()
+            if len(var) < self.progressBar.maximum():
+                try:
+                    self.progressBar.setValue(len(var))
+                finally:
+                    self.mutex.unlock()
+                    time.sleep(0.1)
+            else:
+                self.mutex.unlock()
+                break
+                        
+        self.accept()
+        
+        
              
 class WorkerThread(QThread):
     def __init__(self, thread_id, func, *args, **kwargs):

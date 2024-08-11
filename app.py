@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QVBoxLayout, QLabel, QComboBox, QPushButton
 from PyQt5.QtGui import QImage, QPixmap, QCursor, QColor
 from PyQt5.uic import loadUi
-from PyQt5.QtCore import QThread, QMutex, QMutexLocker
+from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal
 
 from utilities import *
 
@@ -11,6 +11,9 @@ import cv2
 import time
 
 class MyApp(QtWidgets.QMainWindow):
+    
+    loading_progress_signal = pyqtSignal(int)
+    
     def __init__(self):
         super().__init__()
         
@@ -25,7 +28,6 @@ class MyApp(QtWidgets.QMainWindow):
         self.reset()
         
         self.num_widgets = self.stackedWidget.count()
-        self.current_page = 0
         self.stackedWidget.setCurrentIndex(self.current_page)
         
         # Button events
@@ -53,16 +55,23 @@ class MyApp(QtWidgets.QMainWindow):
             None
         """
         
+        self.current_page = 0
+        
         self.nominal_path = None
         self.defect_path = None
+        
         self.no_of_nominal_images = 0
         self.no_of_defect_images = 0
+        self.total_images_loaded = 0
+        
         self.displayed_nominal_img_idx = 0
+        
         self.nominal_images = []
         self.defect_images = []
         
-        self.nominal_images_mutex = QMutex()
-        self.defect_images_mutex = QMutex()
+        # self.nominal_images_mutex = QMutex()
+        # self.defect_images_mutex = QMutex()
+        self.total_images_mutex = QMutex()
         
         self.nominalComboBox.clear()
         self.defectComboBox.clear()
@@ -96,6 +105,9 @@ class MyApp(QtWidgets.QMainWindow):
             mutex.lock()
             try:
                 dst.append(image)
+                self.total_images_loaded += 1
+                self.loading_progress_signal.emit(self.total_images_loaded)
+                print(self.total_images_loaded)
             finally:
                 mutex.unlock()
             
@@ -129,16 +141,15 @@ class MyApp(QtWidgets.QMainWindow):
                 self.no_of_nominal_images = len(nominal_images_paths)
                 self.no_of_defect_images = len(defect_images_paths)
                 
-                self.nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.nominal_images_mutex)
+                self.nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
                 self.nominal_loader_thread.start()
-                dialog_box = LoadingDialog("Loading nominal images", self.no_of_nominal_images, self.nominal_images, self.nominal_images_mutex)
-                dialog_box.exec()
 
-                self.defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.defect_images_mutex)
+                self.defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
                 self.defect_loader_thread.start()
                 
-                # self.load_images(nominal_images_paths, self.nominal_images)
-                # self.load_images(defect_images_paths, self.defect_images)
+                dialog_box = LoadingDialog(self, "Loading nominal images", self.no_of_nominal_images+self.no_of_defect_images)
+                dialog_box.exec()
+                
                 
                 self.nominal_loader_thread.wait()
                 self.defect_loader_thread.wait()
@@ -183,41 +194,29 @@ class MyApp(QtWidgets.QMainWindow):
             self.display_nominal_img()
             
 class LoadingDialog(QDialog):
-    def __init__(self, label_text: str, completion_count: int, var, mutex: QMutex):
+    def __init__(self, parent, label_text: str, completion_count: int):
         super().__init__()
-        
-        self.mutex = mutex
-        
+                
         loadUi(r'assets\loading_dialog.ui', self)  # Load the .ui file
         
         self.setWindowTitle("Loading...")
-        # self.setFixedSize(200, 200)
         
         self.loadingScreenLabel.setText(label_text)
         
         self.progressBar.setValue(0)
         self.progressBar.setRange(0, completion_count)
         
-        self.thread = WorkerThread(0, self.update_progress_bar, var)
-        self.thread.start()
+        # self.thread = WorkerThread(0, self.update_progress_bar, var)
+        # self.thread.start()
+        
+        parent.loading_progress_signal.connect(self.update_progress_bar)
                 
-    def update_progress_bar(self, var):
-        while True:
-            self.mutex.lock()
-            if len(var) < self.progressBar.maximum():
-                try:
-                    self.progressBar.setValue(len(var))
-                finally:
-                    self.mutex.unlock()
-                    time.sleep(0.1)
-            else:
-                self.mutex.unlock()
-                break
-                        
-        self.accept()
+    def update_progress_bar(self, number):      
+        self.progressBar.setValue(number)
         
-        
-             
+        if number == self.progressBar.maximum():
+            self.accept()
+                                    
 class WorkerThread(QThread):
     def __init__(self, thread_id, func, *args, **kwargs):
         super().__init__()

@@ -4,3 +4,4 @@
 -   visibility of next and previous buttons to be toggled depending on page and current state
 -   App reset button
 -   Last and first buttons when viewing images
+-   Add folder or config file to store default settings and history

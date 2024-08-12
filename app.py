@@ -1,16 +1,17 @@
 from PyQt5 import QtWidgets
-from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QVBoxLayout, QLabel, QComboBox, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QDialog, QFileDialog, QMessageBox, QVBoxLayout, QLabel, QComboBox, QPushButton
 from PyQt5.QtGui import QImage, QPixmap, QCursor, QColor
 from PyQt5.uic import loadUi
-from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal
+from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal 
 
 from utilities import *
 
 import os
 import cv2
 import time
+import json
 
-class MyApp(QtWidgets.QMainWindow):
+class MyApp(QMainWindow):
     
     loading_progress_signal = pyqtSignal(int) # used to communicate with loading dialog box
     
@@ -73,12 +74,21 @@ class MyApp(QtWidgets.QMainWindow):
         self.nominal_images = []
         self.defect_images = []
         
-        # self.nominal_images_mutex = QMutex()
-        # self.defect_images_mutex = QMutex()
         self.total_images_mutex = QMutex()
         
         self.nominalComboBox.clear()
         self.defectComboBox.clear()
+        
+        # read settings from config file
+        with open('assets\initialisation_config.json', 'r') as f:
+            config = json.load(f)
+        
+        # set paths    
+        self.nominal_path = config["nominal path"]
+        self.defect_path = config["defect path"]
+        self.nominalComboBox.addItem(self.nominal_path)
+        self.defectComboBox.addItem(self.defect_path)
+        
         
     def view_change(self):
         """
@@ -136,6 +146,15 @@ class MyApp(QtWidgets.QMainWindow):
         
     def display_defect_img(self):
         self.display_img(self.defect_images[self.displayed_defect_img_idx], self.defectImageDisplayLabel)
+        
+    def save_settings(self):
+        with open('assets\initialisation_config.json', 'w') as f:
+            setting_dict = {
+                "nominal path": self.nominal_path,
+                "defect path": self.defect_path
+            }
+            
+            json.dump(setting_dict, f)
                
     # EVENT HANDLERS 
     def next(self):
@@ -162,8 +181,7 @@ class MyApp(QtWidgets.QMainWindow):
                 self.display_nominal_img()
                 
         if self.current_page+1 == self.pages_dict["defect samples"]:
-                self.display_defect_img()
-                
+                self.display_defect_img()                
                       
         if self.current_page != self.num_widgets - 1:
             self.current_page += 1
@@ -211,6 +229,12 @@ class MyApp(QtWidgets.QMainWindow):
         if self.displayed_defect_img_idx > 0:
             self.displayed_defect_img_idx -= 1
             self.display_defect_img()
+            
+    def closeEvent(self, event):
+        self.save_settings()
+        
+        # Call the base class implementation to ensure the window closes
+        super().closeEvent(event)
             
 class LoadingDialog(QDialog):
     def __init__(self, parent, label_text: str, completion_count: int):

@@ -1,6 +1,6 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QDialog, QFileDialog, QMessageBox, QVBoxLayout, QLabel, QComboBox, QPushButton
-from PyQt5.QtGui import QImage, QPixmap, QCursor, QColor
+from PyQt5.QtGui import QImage, QPixmap, QCursor, QColor, QIcon
 from PyQt5.uic import loadUi
 from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal 
 
@@ -26,6 +26,8 @@ class MyApp(QMainWindow):
         }
         
         loadUi(r'assets\start_window.ui', self)  # Load the .ui file
+        
+        self.setWindowIcon(QIcon(r"assets\icon.png"))
         
         self.reset()
         
@@ -243,6 +245,7 @@ class LoadingDialog(QDialog):
         loadUi(r'assets\loading_dialog.ui', self)  # Load the .ui file
         
         self.setWindowTitle(label_text)
+        self.setWindowIcon(QIcon(r"assets\icon.png"))
         
         self.loadingScreenLabel.setText("Loading...")
         

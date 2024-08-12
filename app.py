@@ -81,6 +81,10 @@ class MyApp(QMainWindow):
         self.nominalComboBox.clear()
         self.defectComboBox.clear()
         
+        self.load_settings()
+        
+    def load_settings(self):
+        
         # read settings from config file
         with open('assets\initialisation_config.json', 'r') as f:
             config = json.load(f)

@@ -22,7 +22,8 @@ class MyApp(QMainWindow):
             "home": 0,
             "folder paths": 1,
             "nominal samples": 2,
-            "defect samples": 3
+            "defect samples": 3,
+            "patchcore settings": 4
         }
         
         loadUi(r'assets\start_window.ui', self)  # Load the .ui file
@@ -187,7 +188,10 @@ class MyApp(QMainWindow):
                 self.display_nominal_img()
                 
         if self.current_page+1 == self.pages_dict["defect samples"]:
-                self.display_defect_img()                
+            self.display_defect_img()
+                
+        if self.current_page == self.pages_dict["patchcore settings"]:
+            pass              
                       
         if self.current_page != self.num_widgets - 1:
             self.current_page += 1

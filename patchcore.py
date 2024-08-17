@@ -1,4 +1,5 @@
-import torch
+# import torch
+from torch import stack, split, no_grad, cat, cuda
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -14,12 +15,13 @@ import matplotlib.pyplot as plt
 import scipy.ndimage
 import datetime
 
+
 class PatchCore:
-    def __init__(self, feature_extractor, neighbourhood_size, corset_subsample_size, device='cuda', batch_size=64, resize_shape=(500, 500)):
-        self.feature_extractor = feature_extractor
+    def __init__(self, neighbourhood_size, corset_subsample_size, batch_size=64, resize_shape=(500, 500)):
+        self.device = 'cuda' if cuda.is_available() else 'cpu'
+        self.feature_extractor = FeatureExtractor(resize_shape=resize_shape).to(self.device)
         self.neighbourhood_size = neighbourhood_size
         self.subsample_size = corset_subsample_size
-        self.device = device
         self.batch_size = batch_size
         
         self.memory_bank = None
@@ -54,18 +56,18 @@ class PatchCore:
         self.feature_extractor.eval()
         features = []
         # covert list of images to batch
-        images = torch.stack(images)
+        images = stack(images)
         # split batch into sub-batches
-        sub_batches  = torch.split(images, self.batch_size)
+        sub_batches  = split(images, self.batch_size)
         
-        with torch.no_grad():
+        with no_grad():
             for i, sub_batch in enumerate(sub_batches): 
                 # patches = self.extract_patches(image)
                 sub_batch = sub_batch.to(self.device)
                 patch_features = self.feature_extractor(sub_batch)
                 features.append(patch_features)
         
-        features = torch.cat(features)          
+        features = cat(features)          
         return features
     
     def build_memory_bank(self, normal_images):
@@ -132,15 +134,16 @@ class FeatureExtractor(nn.Module):
             }
 
         self.features = create_feature_extractor(resnet, return_nodes=return_nodes)
-        self.model_summary = summary(
-            self.features, 
-            input_size=(1, 3, resize_shape[0], resize_shape[1]),
-            col_names=["input_size", "output_size", "num_params", "trainable"], 
-            row_settings=["var_names"],
-            )
+        
+        # self.model_summary = summary(
+        #     self.features, 
+        #     input_size=(1, 3, resize_shape[0], resize_shape[1]),
+        #     col_names=["input_size", "output_size", "num_params", "trainable"], 
+        #     row_settings=["var_names"],
+        #     )
         
     def forward(self, x):
-        with torch.no_grad():
+        with no_grad():
             out = self.features(x)
             out = out['layer2_output']
             # out = out['layer3_output']

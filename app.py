@@ -5,6 +5,7 @@ from PyQt5.uic import loadUi
 from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal 
 
 from utilities import *
+from patchcore import *
 
 import os
 import cv2
@@ -26,7 +27,7 @@ class MyApp(QMainWindow):
             "patchcore settings": 4
         }
         
-        loadUi(r'assets\start_window.ui', self)  # Load the .ui file
+        loadUi(r'assets\main_window.ui', self)  # Load the .ui file
         
         self.setWindowIcon(QIcon(r"assets\icon.png"))
         
@@ -48,6 +49,14 @@ class MyApp(QMainWindow):
         # ComboBox events
         self.nominalComboBox.currentIndexChanged.connect(self.on_nominalComboBox_changed)
         self.defectComboBox.currentIndexChanged.connect(self.on_defectComboBox_changed)
+        
+        # Slider events
+        self.neighbourhoodSlider.valueChanged.connect(self.on_neighbourhoodSlider_changed)
+        self.corsetSlider.valueChanged.connect(self.on_corsetSlider_changed)
+        
+        # Patchore settings options
+        self.resizeComboBox.addItems(["200 x 200", "500 x 500", "1000 x 1000"])
+        self.batchSizeComboBox.addItems(["16", "32", "64", "128"])
         
         self.show()
         
@@ -81,6 +90,13 @@ class MyApp(QMainWindow):
         
         self.nominalComboBox.clear()
         self.defectComboBox.clear()
+        
+        self.neighbourhoodSlider.setValue(7)
+        self.neighbourhoodLabel.setText(f"{self.neighbourhoodSlider.value()}")
+        self.corsetSlider.setValue(100)
+        self.corsetLabel.setText(f"{self.corsetSlider.value()}%")
+        self.resizeComboBox.setCurrentIndex(1)
+        self.batchSizeComboBox.setCurrentIndex(1)
         
         self.load_settings()
         
@@ -174,24 +190,38 @@ class MyApp(QMainWindow):
                 self.no_of_nominal_images = len(nominal_images_paths)
                 self.no_of_defect_images = len(defect_images_paths)
                 
-                self.nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
-                self.nominal_loader_thread.start()
+                nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
+                nominal_loader_thread.start()
 
-                self.defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
-                self.defect_loader_thread.start()
+                defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
+                defect_loader_thread.start()
                 
                 dialog_box = LoadingDialog(self, "Loading images", self.no_of_nominal_images+self.no_of_defect_images)
                 dialog_box.exec()
                 
-                self.nominal_loader_thread.wait()
-                self.defect_loader_thread.wait()
+                nominal_loader_thread.wait()
+                defect_loader_thread.wait()
                 self.display_nominal_img()
                 
         if self.current_page+1 == self.pages_dict["defect samples"]:
             self.display_defect_img()
                 
         if self.current_page == self.pages_dict["patchcore settings"]:
-            pass              
+            
+            self.patchcore_settings_dict = {
+                "neighbourhood size": self.neighbourhoodSlider.value(),
+                "corset subsample size": self.corsetSlider.value(),
+                "resize shape": int(self.resizeComboBox.currentText().split("x")[0]),
+                "batch size": int(self.batchSizeComboBox.currentText())
+            }
+            
+            self.patchcore = PatchCore(neighbourhood_size=self.patchcore_settings_dict["neighbourhood size"], 
+                                  corset_subsample_size=self.patchcore_settings_dict["corset subsample size"],
+                                  resize_shape=(self.patchcore_settings_dict["resize shape"], self.patchcore_settings_dict["resize shape"]), 
+                                  batch_size=self.patchcore_settings_dict["batch size"],
+                                  )   
+            
+            # self.patchcore.build_memory_bank(self.nominal_images)          
                       
         if self.current_page != self.num_widgets - 1:
             self.current_page += 1
@@ -239,6 +269,17 @@ class MyApp(QMainWindow):
         if self.displayed_defect_img_idx > 0:
             self.displayed_defect_img_idx -= 1
             self.display_defect_img()
+            
+    def on_neighbourhoodSlider_changed(self):
+        even_bool = self.neighbourhoodSlider.value() % 2 == 0
+        if even_bool:
+            self.neighbourhoodSlider.setValue(self.neighbourhoodSlider.value() + 1)
+             
+        self.neighbourhoodLabel.setText(f"{self.neighbourhoodSlider.value()}")
+  
+        
+    def on_corsetSlider_changed(self):
+        self.corsetLabel.setText(f"{self.corsetSlider.value()}%")
             
     def closeEvent(self, event):
         self.save_settings()

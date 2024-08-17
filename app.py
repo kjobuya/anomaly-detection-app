@@ -12,6 +12,11 @@ import cv2
 import time
 import json
 
+import matplotlib.pyplot as plt
+plt.ioff() 
+import io
+from PIL import Image
+
 class MyApp(QMainWindow):
     
     loading_progress_signal = pyqtSignal(int) # used to communicate with loading dialog box
@@ -24,7 +29,8 @@ class MyApp(QMainWindow):
             "folder paths": 1,
             "nominal samples": 2,
             "defect samples": 3,
-            "patchcore settings": 4
+            "patchcore settings": 4,
+            "results": 5
         }
         
         loadUi(r'assets\main_window.ui', self)  # Load the .ui file
@@ -45,6 +51,8 @@ class MyApp(QMainWindow):
         self.prevNominalImageButton.clicked.connect(self.prevNominalImage)
         self.nextDefectImageButton.clicked.connect(self.nextDefectImage)
         self.prevDefectImageButton.clicked.connect(self.prevDefectImage)
+        self.nextResultsButton.clicked.connect(self.nextResultImage)
+        self.prevResultsButton.clicked.connect(self.prevResultImage)
         
         # ComboBox events
         self.nominalComboBox.currentIndexChanged.connect(self.on_nominalComboBox_changed)
@@ -82,6 +90,7 @@ class MyApp(QMainWindow):
         
         self.displayed_nominal_img_idx = 0
         self.displayed_defect_img_idx = 0
+        self.displayed_results_img_idx = 0
         
         self.nominal_images = []
         self.defect_images = []
@@ -93,10 +102,10 @@ class MyApp(QMainWindow):
         
         self.neighbourhoodSlider.setValue(7)
         self.neighbourhoodLabel.setText(f"{self.neighbourhoodSlider.value()}")
-        self.corsetSlider.setValue(100)
+        self.corsetSlider.setValue(50)
         self.corsetLabel.setText(f"{self.corsetSlider.value()}%")
         self.resizeComboBox.setCurrentIndex(1)
-        self.batchSizeComboBox.setCurrentIndex(1)
+        self.batchSizeComboBox.setCurrentIndex(2)
         
         self.load_settings()
         
@@ -139,6 +148,7 @@ class MyApp(QMainWindow):
                    
         for image_path in images_paths:
             image = cv2.imread(image_path)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             mutex.lock()
             try:
                 dst.append(image)
@@ -169,6 +179,9 @@ class MyApp(QMainWindow):
         
     def display_defect_img(self):
         self.display_img(self.defect_images[self.displayed_defect_img_idx], self.defectImageDisplayLabel)
+        
+    def display_results_img(self):
+        self.display_img(self.result_imgs[self.displayed_results_img_idx], self.resultsImageDisplayLabel)
         
     def save_settings(self):
         with open('assets\initialisation_config.json', 'w') as f:
@@ -227,7 +240,45 @@ class MyApp(QMainWindow):
             
             # testing
             transformed_defect_images = self.patchcore.apply_transforms_on_imgs(self.defect_images)
-            self.defect_heatmaps = self.patchcore.detect_anomalies(transformed_defect_images)          
+            heatmaps = self.patchcore.detect_anomalies(transformed_defect_images) 
+            
+            self.defect_heatmaps = []
+            self.result_imgs = []
+            
+            for i, heatmap in enumerate(heatmaps):
+                selected_defect_image = transformed_defect_images[i].permute(1, 2, 0).cpu().numpy()
+                detection_threshold = np.max(heatmap) * 0.8
+                heatmap = cv2.resize(heatmap, (selected_defect_image.shape[0], selected_defect_image.shape[1]), interpolation=cv2.INTER_CUBIC) * 255
+                self.defect_heatmaps.append(heatmap)
+                mask = np.where(heatmap >= detection_threshold, 1, 0)
+                
+                fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 6), dpi=100)
+                
+                axs[0].imshow(selected_defect_image, cmap='gray')
+                axs[1].imshow(selected_defect_image, cmap='gray')
+                axs[1].imshow(heatmap, cmap='jet', alpha= 0.5, vmin=detection_threshold, vmax=np.max(heatmap))
+                # # axs[1].imshow(heatmap, cmap='jet', alpha= 0.5)
+                # # axs[2].imshow(mask, cmap='gray')
+
+                axs[0].axis('off')
+                axs[1].axis('off')
+                # # axs[2].axis('off')
+                
+                fig.tight_layout()
+                buf = io.BytesIO()
+                fig.savefig(buf, format='png')
+                plt.close()
+                
+                buf.seek(0)
+                
+                # image = np.array(Image.open(buf))#
+                image = cv2.imdecode(np.frombuffer(buf.getvalue(), np.uint8), cv2.IMREAD_COLOR)
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                buf.close()
+                
+                self.result_imgs.append(image)
+                
+            self.display_results_img()            
                       
         if self.current_page != self.num_widgets - 1:
             self.current_page += 1
@@ -275,6 +326,16 @@ class MyApp(QMainWindow):
         if self.displayed_defect_img_idx > 0:
             self.displayed_defect_img_idx -= 1
             self.display_defect_img()
+            
+    def nextResultImage(self):
+        if self.displayed_results_img_idx < len(self.result_imgs) - 1:
+            self.displayed_results_img_idx += 1
+            self.display_results_img()
+    
+    def prevResultImage(self):
+        if self.displayed_results_img_idx > 0:
+            self.displayed_results_img_idx -= 1
+            self.display_results_img()
             
     def on_neighbourhoodSlider_changed(self):
         even_bool = self.neighbourhoodSlider.value() % 2 == 0

@@ -98,6 +98,8 @@ class MyApp(QMainWindow):
         
         self.nominal_images = []
         self.defect_images = []
+        self.defect_heatmaps = []
+        self.result_imgs = []
         
         self.total_images_mutex = QMutex()
         self.patchcore = None
@@ -334,7 +336,9 @@ class MyApp(QMainWindow):
             
         if self.current_page-1 == self.pages_dict["defect path"]:
             self.defect_images = []
-        
+            self.displayed_defect_img_idx = 0
+            self.displayed_results_img_idx = 0
+            
         if self.current_page != 0:
             self.current_page -= 1
             self.view_change()

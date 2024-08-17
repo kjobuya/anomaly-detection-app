@@ -221,7 +221,13 @@ class MyApp(QMainWindow):
                                   batch_size=self.patchcore_settings_dict["batch size"],
                                   )   
             
-            # self.patchcore.build_memory_bank(self.nominal_images)          
+            # training
+            transformed_nominal_images = self.patchcore.apply_transforms_on_imgs(self.nominal_images)
+            self.patchcore.build_memory_bank(transformed_nominal_images)
+            
+            # testing
+            transformed_defect_images = self.patchcore.apply_transforms_on_imgs(self.defect_images)
+            self.defect_heatmaps = self.patchcore.detect_anomalies(transformed_defect_images)          
                       
         if self.current_page != self.num_widgets - 1:
             self.current_page += 1

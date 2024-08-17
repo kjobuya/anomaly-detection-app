@@ -21,7 +21,7 @@ class PatchCore:
         self.device = 'cuda' if cuda.is_available() else 'cpu'
         self.feature_extractor = FeatureExtractor(resize_shape=resize_shape).to(self.device)
         self.neighbourhood_size = neighbourhood_size
-        self.subsample_size = corset_subsample_size
+        self.subsample_size = corset_subsample_size # percentage
         self.batch_size = batch_size
         
         self.memory_bank = None
@@ -93,7 +93,8 @@ class PatchCore:
     
     def corset_subsampling(self):
         subset_indices = self.initialize_subset()
-        while len(subset_indices) < self.subsample_size:
+        size_limit = int(len(self.memory_bank) * self.subsample_size / 100)
+        while len(subset_indices) < size_limit:
             next_point_index = self.select_next_point(subset_indices)
             subset_indices.append(next_point_index)
         self.subsample_indices = np.array(subset_indices)

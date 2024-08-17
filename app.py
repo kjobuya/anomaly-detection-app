@@ -2,7 +2,7 @@ from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QDialog, QFileDialog, QMessageBox, QVBoxLayout, QLabel, QComboBox, QPushButton
 from PyQt5.QtGui import QImage, QPixmap, QCursor, QColor, QIcon
 from PyQt5.uic import loadUi
-from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal 
+from PyQt5.QtCore import QThread, QMutex, QMutexLocker, pyqtSignal, Qt
 
 from utilities import *
 from patchcore import *
@@ -20,6 +20,7 @@ from PIL import Image
 class MyApp(QMainWindow):
     
     loading_progress_signal = pyqtSignal(int) # used to communicate with loading dialog box
+    training_complete_signal = pyqtSignal(bool)
     
     def __init__(self):
         super().__init__()
@@ -236,9 +237,17 @@ class MyApp(QMainWindow):
             
             # training
             transformed_nominal_images = self.patchcore.apply_transforms_on_imgs(self.nominal_images)
-            self.patchcore.build_memory_bank(transformed_nominal_images)
+            # self.patchcore.build_memory_bank(transformed_nominal_images)
+            training_thread = WorkerThread(3, self.patchcore.build_memory_bank, transformed_nominal_images, self.training_complete_signal)
+            training_thread.start()
+            
+            dialog_box = TrainingDialog(self)
+            dialog_box.exec()
+            
+            training_thread.wait()
             
             # testing
+            print('Running testing on defect samples...')
             transformed_defect_images = self.patchcore.apply_transforms_on_imgs(self.defect_images)
             heatmaps = self.patchcore.detect_anomalies(transformed_defect_images) 
             
@@ -375,6 +384,25 @@ class LoadingDialog(QDialog):
         
         if number == self.progressBar.maximum():
             self.accept()
+            
+class TrainingDialog(QDialog):
+    def __init__(self, parent):
+        super().__init__()
+        
+        self.setWindowTitle("Training...")
+        # self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.resize(300, 100)
+        label = QLabel("Training...")
+        layout = QVBoxLayout()
+        layout.addWidget(label)
+        self.setLayout(layout)
+        
+        parent.training_complete_signal.connect(self.training_complete)
+                
+    def training_complete(self, boolean_state):
+        self.accept()
+                        
+    
                                     
 class WorkerThread(QThread):
     def __init__(self, thread_id, func, *args, **kwargs):

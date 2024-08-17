@@ -70,11 +70,13 @@ class PatchCore:
         features = cat(features)          
         return features
     
-    def build_memory_bank(self, normal_images):
+    def build_memory_bank(self, normal_images, signal = None):
         normal_features = self.extract_features(normal_images)
         normal_features = self.neighbourhood_aggregation(normal_features)
         self.memory_bank = normal_features.view(normal_features.shape[0], -1).cpu().numpy()
         self.corset_subsampling()
+        if signal is not None:
+            signal.emit(True)
         return self.memory_bank
     
     def initialize_subset(self):

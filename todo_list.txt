@@ -5,3 +5,6 @@
 -   App reset button
 -   Last and first buttons when viewing images
 -   Add folder or config file to store default settings and history
+-   Optimize euclidean distance calculation
+-   Change when defects data folder is selected to allow for changes
+-   Finish setting up returning to previous pages

@@ -42,7 +42,7 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>5</number>
+     <number>4</number>
     </property>
     <widget class="QWidget" name="home">
      <widget class="QLabel" name="label">
@@ -71,22 +71,12 @@ border-color: rgb(0, 0, 0);</string>
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="folder_paths">
+    <widget class="QWidget" name="nominal_path">
      <widget class="QComboBox" name="nominalComboBox">
       <property name="geometry">
        <rect>
         <x>240</x>
         <y>300</y>
-        <width>711</width>
-        <height>22</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QComboBox" name="defectComboBox">
-      <property name="geometry">
-       <rect>
-        <x>240</x>
-        <y>340</y>
         <width>711</width>
         <height>22</height>
        </rect>
@@ -105,37 +95,11 @@ border-color: rgb(0, 0, 0);</string>
        <string>Nominal samples</string>
       </property>
      </widget>
-     <widget class="QLabel" name="label_3">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>340</y>
-        <width>131</width>
-        <height>20</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Defect samples</string>
-      </property>
-     </widget>
      <widget class="QPushButton" name="addNominalPathButton">
       <property name="geometry">
        <rect>
         <x>960</x>
         <y>298</y>
-        <width>93</width>
-        <height>25</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Select folder</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="addDefectPathButton">
-      <property name="geometry">
-       <rect>
-        <x>960</x>
-        <y>338</y>
         <width>93</width>
         <height>25</height>
        </rect>
@@ -226,90 +190,6 @@ border-color: rgb(0, 0, 0);</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-    </widget>
-    <widget class="QWidget" name="defect_samples">
-     <widget class="QLabel" name="label_6">
-      <property name="geometry">
-       <rect>
-        <x>470</x>
-        <y>9</y>
-        <width>251</width>
-        <height>41</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>18</pointsize>
-        <italic>false</italic>
-       </font>
-      </property>
-      <property name="text">
-       <string>Defect Samples</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
-     </widget>
-     <widget class="QLabel" name="defectImageDisplayLabel">
-      <property name="geometry">
-       <rect>
-        <x>320</x>
-        <y>60</y>
-        <width>531</width>
-        <height>521</height>
-       </rect>
-      </property>
-      <property name="styleSheet">
-       <string notr="true">border: 1px solid black;
-</string>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="scaledContents">
-       <bool>true</bool>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="nextDefectImageButton">
-      <property name="geometry">
-       <rect>
-        <x>857</x>
-        <y>60</y>
-        <width>81</width>
-        <height>521</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>18</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
-      </property>
-      <property name="text">
-       <string>&gt;</string>
-      </property>
-     </widget>
-     <widget class="QPushButton" name="prevDefectImageButton">
-      <property name="geometry">
-       <rect>
-        <x>232</x>
-        <y>60</y>
-        <width>81</width>
-        <height>521</height>
-       </rect>
-      </property>
-      <property name="font">
-       <font>
-        <pointsize>17</pointsize>
-        <weight>75</weight>
-        <bold>true</bold>
-       </font>
-      </property>
-      <property name="text">
-       <string>&lt;</string>
       </property>
      </widget>
     </widget>
@@ -583,7 +463,129 @@ border-color: rgb(0, 0, 0);</string>
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="trainin_results">
+    <widget class="QWidget" name="defect_path">
+     <widget class="QPushButton" name="addDefectPathButton">
+      <property name="geometry">
+       <rect>
+        <x>950</x>
+        <y>300</y>
+        <width>93</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Select folder</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="defectComboBox">
+      <property name="geometry">
+       <rect>
+        <x>230</x>
+        <y>302</y>
+        <width>711</width>
+        <height>22</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="label_11">
+      <property name="geometry">
+       <rect>
+        <x>100</x>
+        <y>302</y>
+        <width>131</width>
+        <height>20</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Defect samples</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="defect_samples">
+     <widget class="QLabel" name="label_6">
+      <property name="geometry">
+       <rect>
+        <x>470</x>
+        <y>9</y>
+        <width>251</width>
+        <height>41</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>18</pointsize>
+        <italic>false</italic>
+       </font>
+      </property>
+      <property name="text">
+       <string>Defect Samples</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
+     <widget class="QLabel" name="defectImageDisplayLabel">
+      <property name="geometry">
+       <rect>
+        <x>320</x>
+        <y>60</y>
+        <width>531</width>
+        <height>521</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">border: 1px solid black;
+</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="scaledContents">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="nextDefectImageButton">
+      <property name="geometry">
+       <rect>
+        <x>857</x>
+        <y>60</y>
+        <width>81</width>
+        <height>521</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>18</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>&gt;</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="prevDefectImageButton">
+      <property name="geometry">
+       <rect>
+        <x>232</x>
+        <y>60</y>
+        <width>81</width>
+        <height>521</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>17</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="text">
+       <string>&lt;</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="training_results">
      <widget class="QLabel" name="resultsImageDisplayLabel">
       <property name="geometry">
        <rect>

@@ -28,11 +28,12 @@ class MyApp(QMainWindow):
         
         self.pages_dict = {
             "home": 0,
-            "folder paths": 1,
+            "nominal path": 1,
             "nominal samples": 2,
-            "defect samples": 3,
-            "patchcore settings": 4,
-            "results": 5
+            "patchcore settings": 3,
+            "defect path": 4,
+            "defect samples": 5,
+            "results": 6
         }
         
         loadUi(r'assets\main_window.ui', self)  # Load the .ui file
@@ -42,11 +43,11 @@ class MyApp(QMainWindow):
         self.reset()
         
         self.num_widgets = self.stackedWidget.count()
-        self.stackedWidget.setCurrentIndex(self.current_page)
+        self.stackedWidget.setCurrentIndex(self.pages_dict["home"])
         
         # Button events
         self.nextButton.clicked.connect(self.next)
-        self.backButton.clicked.connect(self.back)
+        self.backButton.clicked.connect(self.prev)
         self.addNominalPathButton.clicked.connect(self.addNominalPath)
         self.addDefectPathButton.clicked.connect(self.addDefectPath)
         self.nextNominalImageButton.clicked.connect(self.nextNominalImage)
@@ -70,7 +71,7 @@ class MyApp(QMainWindow):
         
         self.show()
         
-    def reset(self):
+    def reset(self, reset_stacked_widget = True):
         """
         Resets the application state to its initial values.
         
@@ -81,7 +82,8 @@ class MyApp(QMainWindow):
             None
         """
         
-        self.current_page = 0
+        if reset_stacked_widget:
+            self.current_page = 0
         
         self.nominal_path = None
         self.defect_path = None
@@ -159,7 +161,8 @@ class MyApp(QMainWindow):
                 self.loading_progress_signal.emit(self.total_images_loaded)
             finally:
                 mutex.unlock()
-            
+                
+        self.total_images_loaded = 0 # reset
         return dst
     
     def display_img(self, image, label:QLabel):                      
@@ -214,7 +217,7 @@ class MyApp(QMainWindow):
             
         for i, heatmap in enumerate(heatmaps):
             selected_defect_image = transformed_defect_images[i].permute(1, 2, 0).cpu().numpy()
-            detection_threshold = np.max(heatmap) * 0.8
+            detection_threshold = np.max(heatmap) * 0.9
             heatmap = cv2.resize(heatmap, (selected_defect_image.shape[0], selected_defect_image.shape[1]), interpolation=cv2.INTER_CUBIC) * 255
             self.defect_heatmaps.append(heatmap)
             mask = np.where(heatmap >= detection_threshold, 1, 0)
@@ -248,30 +251,49 @@ class MyApp(QMainWindow):
                
     # EVENT HANDLERS 
     def next(self):
-        if self.current_page+1 == self.pages_dict["nominal samples"]:
+        if self.current_page == self.pages_dict["nominal path"]:
             # need to load images from paths
             if self.nominal_path and self.defect_path:
                 nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
-                defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]
+                # defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]
                 
                 self.no_of_nominal_images = len(nominal_images_paths)
-                self.no_of_defect_images = len(defect_images_paths)
+                # self.no_of_defect_images = len(defect_images_paths)
                 
                 nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
                 nominal_loader_thread.start()
 
-                defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
-                defect_loader_thread.start()
+                # defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
+                # defect_loader_thread.start()
                 
-                dialog_box = LoadingDialog(self, "Loading images", self.no_of_nominal_images+self.no_of_defect_images)
+                dialog_box = LoadingDialog(self, "Loading images", self.no_of_nominal_images)
                 dialog_box.exec()
                 
                 nominal_loader_thread.wait()
-                defect_loader_thread.wait()
+                # defect_loader_thread.wait()
                 self.display_nominal_img()
                 
-        if self.current_page+1 == self.pages_dict["defect samples"]:
-            self.display_defect_img()
+        if self.current_page == self.pages_dict["defect path"]:
+            # need to load images from paths
+            if self.nominal_path and self.defect_path:
+                # nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
+                defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]
+                
+                # self.no_of_nominal_images = len(nominal_images_paths)
+                self.no_of_defect_images = len(defect_images_paths)
+                
+                # nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
+                # nominal_loader_thread.start()
+
+                defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
+                defect_loader_thread.start()
+                
+                dialog_box = LoadingDialog(self, "Loading images", self.no_of_defect_images)
+                dialog_box.exec()
+                
+                # nominal_loader_thread.wait()
+                defect_loader_thread.wait()
+                self.display_defect_img()
                 
         if self.current_page == self.pages_dict["patchcore settings"]:
             
@@ -289,8 +311,9 @@ class MyApp(QMainWindow):
             dialog_box.exec()
             
             patchcore_setup_thread.wait()         
-                        
-            # testing
+            
+        if self.current_page+1 == self.pages_dict["results"]:
+            # need to run tests
             testing_thread = WorkerThread(4, self.run_test_on_defects)
             testing_thread.start()
             
@@ -298,13 +321,20 @@ class MyApp(QMainWindow):
             dialog_box.exec()
             
             testing_thread.wait()    
-            self.display_results_img()            
+            self.display_results_img() 
                       
+        # perform page change              
         if self.current_page != self.num_widgets - 1:
             self.current_page += 1
             self.view_change()
         
-    def back(self):
+    def prev(self):
+        if self.current_page-1 == self.pages_dict["nominal path"]:
+            self.reset(reset_stacked_widget=False)
+            
+        if self.current_page-1 == self.pages_dict["defect path"]:
+            self.defect_images = []
+        
         if self.current_page != 0:
             self.current_page -= 1
             self.view_change()

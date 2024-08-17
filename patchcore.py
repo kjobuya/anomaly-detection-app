@@ -72,9 +72,12 @@ class PatchCore:
     
     def build_memory_bank(self, normal_images, signal = None):
         normal_features = self.extract_features(normal_images)
+        print("Finished extracting features")
         normal_features = self.neighbourhood_aggregation(normal_features)
+        print("Finished neighbourhood aggregation")
         self.memory_bank = normal_features.view(normal_features.shape[0], -1).cpu().numpy()
         self.corset_subsampling()
+        print("Finished corset subsampling")
         if signal is not None:
             signal.emit(True)
         return self.memory_bank
@@ -101,7 +104,7 @@ class PatchCore:
             subset_indices.append(next_point_index)
         self.subsample_indices = np.array(subset_indices)
     
-    def detect_anomalies(self, test_images):
+    def detect_anomalies(self, test_images, signal = None):
         test_features = self.extract_features(test_images)
         test_features = self.neighbourhood_aggregation(test_features).cpu().numpy()
         subsampled_memory_bank = self.memory_bank[self.subsample_indices]
@@ -121,6 +124,10 @@ class PatchCore:
         
         # distances_to_memory_bank = euclidean_distances(test_features, subsampled_memory_bank)
         # anomaly_scores = np.min(distances_to_memory_bank, axis=1)
+        
+        if signal is not None:
+            signal.emit(True)
+            
         return heatmap
 
 # Define the feature extractor using a pre-trained ResNet model

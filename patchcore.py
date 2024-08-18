@@ -1,5 +1,5 @@
 # import torch
-from torch import stack, split, no_grad, cat, cuda
+from torch import stack, split, no_grad, cat, cuda, cdist, from_numpy
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -83,15 +83,24 @@ class PatchCore:
         return self.memory_bank
     
     def initialize_subset(self):
-        centroid = np.mean(self.memory_bank, axis=0)
-        distances = euclidean_distances([centroid], self.memory_bank).flatten()
+        centroid = np.mean(self.memory_bank, axis=0)[np.newaxis, :]
+        # distances = euclidean_distances([centroid], self.memory_bank).flatten()
+        
+        # convert to tensors
+        centroid_tensor, memory_bank_tensor = from_numpy(centroid).to(self.device), from_numpy(self.memory_bank).to(self.device)
+        distances = cdist(centroid_tensor, memory_bank_tensor).flatten().cpu().numpy()
+        
         farthest_point_index = np.argmax(distances)
         subset_indices = [farthest_point_index]
         return subset_indices
     
     def select_next_point(self, subset_indices):
         subset = self.memory_bank[subset_indices]
-        distances_to_subset = euclidean_distances(self.memory_bank, subset)
+        subset_tensor, memory_bank_tensor = from_numpy(subset).to(self.device), from_numpy(self.memory_bank).to(self.device)
+        
+        # distances_to_subset = euclidean_distances(self.memory_bank, subset)
+        distances_to_subset = cdist(subset_tensor, memory_bank_tensor).cpu().numpy()
+        
         min_distances = np.min(distances_to_subset, axis=1)
         next_point_index = np.argmax(min_distances)
         return next_point_index
@@ -117,13 +126,15 @@ class PatchCore:
             for i in range(test_features.shape[2]):
                 for j in range(test_features.shape[3]):
                     tf = test_features[sample_idx, :, i, j]
+                    tf_tensor = from_numpy(tf).to(self.device)[np.newaxis, :]
                     ssmb = reshaped_memory_bank[:, :, i, j]
-                    distances_to_memory_bank = euclidean_distances([tf], ssmb)
+                    ssmb_tensor = from_numpy(ssmb).to(self.device)
+                    # distances_to_memory_bank = euclidean_distances([tf], ssmb)
+                    distances_to_memory_bank = cdist(tf_tensor, ssmb_tensor).cpu().numpy()
+                    
                     anomaly_score = np.min(distances_to_memory_bank, axis=1)
                     heatmap[sample_idx, i, j] = anomaly_score.item()
-        
-        # distances_to_memory_bank = euclidean_distances(test_features, subsampled_memory_bank)
-        # anomaly_scores = np.min(distances_to_memory_bank, axis=1)
+    
         
         if signal is not None:
             signal.emit(True)

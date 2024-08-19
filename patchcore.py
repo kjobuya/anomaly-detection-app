@@ -1,24 +1,24 @@
-# import torch
-from torch import stack, split, no_grad, cat, cuda, cdist, from_numpy
+import torch
+# from torch import stack, split, no_grad, cat, cuda, cdist, from_numpy
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
 from torchvision.models.feature_extraction import get_graph_node_names
 from torchvision.models.feature_extraction import create_feature_extractor
-from sklearn.metrics.pairwise import euclidean_distances
+# from sklearn.metrics.pairwise import euclidean_distances
+import sklearn.metrics.pairwise as sklearn_pairwise
 import numpy as np
 from PIL import Image
 import cv2
 import os
 from torchinfo import summary
 import matplotlib.pyplot as plt
-import scipy.ndimage
 import datetime
 
 
 class PatchCore:
     def __init__(self, neighbourhood_size, corset_subsample_size, batch_size=64, resize_shape=(500, 500)):
-        self.device = 'cuda' if cuda.is_available() else 'cpu'
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.feature_extractor = FeatureExtractor(resize_shape=resize_shape).to(self.device)
         self.neighbourhood_size = neighbourhood_size
         self.subsample_size = corset_subsample_size # percentage
@@ -56,18 +56,18 @@ class PatchCore:
         self.feature_extractor.eval()
         features = []
         # covert list of images to batch
-        images = stack(images)
+        images = torch.stack(images)
         # split batch into sub-batches
-        sub_batches  = split(images, self.batch_size)
+        sub_batches  = torch.split(images, self.batch_size)
         
-        with no_grad():
+        with torch.no_grad():
             for i, sub_batch in enumerate(sub_batches): 
                 # patches = self.extract_patches(image)
                 sub_batch = sub_batch.to(self.device)
                 patch_features = self.feature_extractor(sub_batch)
                 features.append(patch_features)
         
-        features = cat(features)          
+        features = torch.cat(features)          
         return features
     
     def build_memory_bank(self, normal_images, signal = None):
@@ -87,8 +87,10 @@ class PatchCore:
         # distances = euclidean_distances([centroid], self.memory_bank).flatten()
         
         # convert to tensors
-        centroid_tensor, memory_bank_tensor = from_numpy(centroid).to(self.device), from_numpy(self.memory_bank).to(self.device)
-        distances = cdist(centroid_tensor, memory_bank_tensor).flatten().cpu().numpy()
+        # centroid_tensor, memory_bank_tensor = torch.from_numpy(centroid).to(self.device), torch.from_numpy(self.memory_bank).to(self.device)
+        # distances = torch.cdist(centroid_tensor, memory_bank_tensor).flatten().cpu().numpy()
+        
+        distances = self.calculate_euclidean_distances(centroid, self.memory_bank, method="tensor")
         
         farthest_point_index = np.argmax(distances)
         subset_indices = [farthest_point_index]
@@ -96,10 +98,12 @@ class PatchCore:
     
     def select_next_point(self, subset_indices):
         subset = self.memory_bank[subset_indices]
-        subset_tensor, memory_bank_tensor = from_numpy(subset).to(self.device), from_numpy(self.memory_bank).to(self.device)
+        # subset_tensor, memory_bank_tensor = torch.from_numpy(subset).to(self.device), torch.from_numpy(self.memory_bank).to(self.device)
         
         # distances_to_subset = euclidean_distances(self.memory_bank, subset)
-        distances_to_subset = cdist(subset_tensor, memory_bank_tensor).cpu().numpy()
+        # distances_to_subset = torch.cdist(subset_tensor, memory_bank_tensor).cpu().numpy()
+        
+        distances_to_subset = self.calculate_euclidean_distances(self.memory_bank, subset, method="tensor")
         
         min_distances = np.min(distances_to_subset, axis=1)
         next_point_index = np.argmax(min_distances)
@@ -125,21 +129,34 @@ class PatchCore:
             # build heatmap
             for i in range(test_features.shape[2]):
                 for j in range(test_features.shape[3]):
-                    tf = test_features[sample_idx, :, i, j]
-                    tf_tensor = from_numpy(tf).to(self.device)[np.newaxis, :]
+                    tf = test_features[sample_idx, :, i, j][np.newaxis, :]
+                    # tf_tensor = torch.from_numpy(tf).to(self.device)[np.newaxis, :]
                     ssmb = reshaped_memory_bank[:, :, i, j]
-                    ssmb_tensor = from_numpy(ssmb).to(self.device)
+                    # ssmb_tensor = torch.from_numpy(ssmb).to(self.device)
                     # distances_to_memory_bank = euclidean_distances([tf], ssmb)
-                    distances_to_memory_bank = cdist(tf_tensor, ssmb_tensor).cpu().numpy()
+                    # distances_to_memory_bank = torch.cdist(tf_tensor, ssmb_tensor).cpu().numpy()
+                    distances_to_memory_bank = self.calculate_euclidean_distances(tf, ssmb, method="tensor")
                     
                     anomaly_score = np.min(distances_to_memory_bank, axis=1)
                     heatmap[sample_idx, i, j] = anomaly_score.item()
-    
-        
+           
         if signal is not None:
             signal.emit(True)
             
         return heatmap
+    
+    def calculate_euclidean_distances(self, pts1: np.ndarray, pts2: np.ndarray, method = "tensor"):
+        assert len(pts1.shape) == 2
+        assert len(pts2.shape) == 2
+        assert method == "array" or method == "tensor"
+        
+        if method == "array":
+            distances = sklearn_pairwise.euclidean_distances(pts1, pts2)
+        elif method == "tensor":
+            pts1_tensor, pts2_tensor = torch.from_numpy(pts1).to(self.device), torch.from_numpy(pts2).to(self.device)
+            distances = torch.cdist(pts1_tensor, pts2_tensor).cpu().numpy()
+        return distances
+            
 
 # Define the feature extractor using a pre-trained ResNet model
 class FeatureExtractor(nn.Module):
@@ -164,7 +181,7 @@ class FeatureExtractor(nn.Module):
         #     )
         
     def forward(self, x):
-        with no_grad():
+        with torch.no_grad():
             out = self.features(x)
             out = out['layer2_output']
             # out = out['layer3_output']

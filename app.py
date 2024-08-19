@@ -66,7 +66,7 @@ class MyApp(QMainWindow):
         self.corsetSlider.valueChanged.connect(self.on_corsetSlider_changed)
         
         # Patchore settings options
-        self.resizeComboBox.addItems(["200 x 200", "500 x 500", "1000 x 1000"])
+        self.resizeComboBox.addItems(["200 x 200", "300 x 300", "500 x 500"])
         self.batchSizeComboBox.addItems(["16", "32", "64", "128"])
         
         self.show()
@@ -219,8 +219,8 @@ class MyApp(QMainWindow):
             
         for i, heatmap in enumerate(heatmaps):
             selected_defect_image = transformed_defect_images[i].permute(1, 2, 0).cpu().numpy()
-            detection_threshold = np.max(heatmap) * 0.9
-            heatmap = cv2.resize(heatmap, (selected_defect_image.shape[0], selected_defect_image.shape[1]), interpolation=cv2.INTER_CUBIC) * 255
+            detection_threshold = np.max(heatmap) * 0.8
+            heatmap = cv2.resize(heatmap, (selected_defect_image.shape[0], selected_defect_image.shape[1]), interpolation=cv2.INTER_CUBIC)
             self.defect_heatmaps.append(heatmap)
             mask = np.where(heatmap >= detection_threshold, 1, 0)
             
@@ -228,7 +228,8 @@ class MyApp(QMainWindow):
             
             axs[0].imshow(selected_defect_image, cmap='gray')
             axs[1].imshow(selected_defect_image, cmap='gray')
-            axs[1].imshow(heatmap, cmap='jet', alpha= 0.5, vmin=detection_threshold, vmax=np.max(heatmap))
+            axs[1].imshow(heatmap, cmap='jet', alpha= 0.4, vmin=detection_threshold, vmax=np.max(heatmap))
+            # axs[1].imshow(heatmap, cmap='jet', alpha= 0.4, vmin=detection_threshold, vmax=1)
             # # axs[1].imshow(heatmap, cmap='jet', alpha= 0.5)
             # # axs[2].imshow(mask, cmap='gray')
 

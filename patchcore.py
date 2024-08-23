@@ -15,6 +15,7 @@ from torchinfo import summary
 import matplotlib.pyplot as plt
 import datetime
 
+torch.set_default_dtype(torch.float64)  # Set default to double-precision
 
 class PatchCore:
     def __init__(self, neighbourhood_size, corset_subsample_size, batch_size=64, resize_shape=(500, 500)):
@@ -55,14 +56,15 @@ class PatchCore:
     def extract_features(self, images):
         self.feature_extractor.eval()
         features = []
+        
         # covert list of images to batch
         images = torch.stack(images)
+        
         # split batch into sub-batches
         sub_batches  = torch.split(images, self.batch_size)
         
         with torch.no_grad():
             for i, sub_batch in enumerate(sub_batches): 
-                # patches = self.extract_patches(image)
                 sub_batch = sub_batch.to(self.device)
                 patch_features = self.feature_extractor(sub_batch)
                 features.append(patch_features)
@@ -84,13 +86,8 @@ class PatchCore:
     
     def initialize_subset(self):
         centroid = np.mean(self.memory_bank, axis=0)[np.newaxis, :]
-        # distances = euclidean_distances([centroid], self.memory_bank).flatten()
         
-        # convert to tensors
-        # centroid_tensor, memory_bank_tensor = torch.from_numpy(centroid).to(self.device), torch.from_numpy(self.memory_bank).to(self.device)
-        # distances = torch.cdist(centroid_tensor, memory_bank_tensor).flatten().cpu().numpy()
-        
-        distances = self.calculate_euclidean_distances(centroid, self.memory_bank, method="tensor")
+        distances = self.calculate_euclidean_distances(centroid, self.memory_bank, method="tensor").flatten()
         
         farthest_point_index = np.argmax(distances)
         subset_indices = [farthest_point_index]
@@ -98,10 +95,6 @@ class PatchCore:
     
     def select_next_point(self, subset_indices):
         subset = self.memory_bank[subset_indices]
-        # subset_tensor, memory_bank_tensor = torch.from_numpy(subset).to(self.device), torch.from_numpy(self.memory_bank).to(self.device)
-        
-        # distances_to_subset = euclidean_distances(self.memory_bank, subset)
-        # distances_to_subset = torch.cdist(subset_tensor, memory_bank_tensor).cpu().numpy()
         
         distances_to_subset = self.calculate_euclidean_distances(self.memory_bank, subset, method="tensor")
         
@@ -130,11 +123,7 @@ class PatchCore:
             for i in range(test_features.shape[2]):
                 for j in range(test_features.shape[3]):
                     tf = test_features[sample_idx, :, i, j][np.newaxis, :]
-                    # tf_tensor = torch.from_numpy(tf).to(self.device)[np.newaxis, :]
                     ssmb = reshaped_memory_bank[:, :, i, j]
-                    # ssmb_tensor = torch.from_numpy(ssmb).to(self.device)
-                    # distances_to_memory_bank = euclidean_distances([tf], ssmb)
-                    # distances_to_memory_bank = torch.cdist(tf_tensor, ssmb_tensor).cpu().numpy()
                     distances_to_memory_bank = self.calculate_euclidean_distances(tf, ssmb, method="tensor")
                     
                     anomaly_score = np.min(distances_to_memory_bank, axis=1)
@@ -155,6 +144,7 @@ class PatchCore:
         elif method == "tensor":
             pts1_tensor, pts2_tensor = torch.from_numpy(pts1).to(self.device), torch.from_numpy(pts2).to(self.device)
             distances = torch.cdist(pts1_tensor, pts2_tensor).cpu().numpy()
+            
         return distances
             
 

@@ -219,16 +219,19 @@ class MyApp(QMainWindow):
             
         for i, heatmap in enumerate(heatmaps):
             selected_defect_image = transformed_defect_images[i].permute(1, 2, 0).cpu().numpy()
-            detection_threshold = np.max(heatmap) * 0.8
             heatmap = cv2.resize(heatmap, (selected_defect_image.shape[0], selected_defect_image.shape[1]), interpolation=cv2.INTER_CUBIC)
+            detection_threshold = np.max(heatmap) * 0.5
             self.defect_heatmaps.append(heatmap)
             mask = np.where(heatmap >= detection_threshold, 1, 0)
+            anomalys_score = np.mean(heatmap[mask == 1])
             
             fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(10, 6), dpi=100)
             
             axs[0].imshow(selected_defect_image, cmap='gray')
             axs[1].imshow(selected_defect_image, cmap='gray')
             axs[1].imshow(heatmap, cmap='jet', alpha= 0.4, vmin=detection_threshold, vmax=np.max(heatmap))
+            # axs[1].imshow(heatmap, cmap='jet', alpha= 0.3, vmin = 0, vmax = 1)
+            axs[1].title.set_text(f'Anomalys score: {anomalys_score:.2f}')
             # axs[1].imshow(heatmap, cmap='jet', alpha= 0.4, vmin=detection_threshold, vmax=1)
             # # axs[1].imshow(heatmap, cmap='jet', alpha= 0.5)
             # # axs[2].imshow(mask, cmap='gray')
@@ -309,6 +312,8 @@ class MyApp(QMainWindow):
                             
             patchcore_setup_thread = WorkerThread(3, self.patchcore_setup)
             patchcore_setup_thread.start()  
+            
+            # self.patchcore_setup()
             
             dialog_box = TrainingDialog(self)
             dialog_box.exec()

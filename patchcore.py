@@ -1,11 +1,9 @@
 import torch
-# from torch import stack, split, no_grad, cat, cuda, cdist, from_numpy
 import torch.nn as nn
 import torchvision.models as models
 import torchvision.transforms as transforms
 from torchvision.models.feature_extraction import get_graph_node_names
 from torchvision.models.feature_extraction import create_feature_extractor
-# from sklearn.metrics.pairwise import euclidean_distances
 import sklearn.metrics.pairwise as sklearn_pairwise
 import numpy as np
 from PIL import Image

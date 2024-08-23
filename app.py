@@ -66,7 +66,7 @@ class MyApp(QMainWindow):
         self.corsetSlider.valueChanged.connect(self.on_corsetSlider_changed)
         
         # Patchore settings options
-        self.resizeComboBox.addItems(["200 x 200", "300 x 300", "500 x 500"])
+        self.resizeComboBox.addItems(["200 x 200", "300 x 300", "400 x 400", "500 x 500"])
         self.batchSizeComboBox.addItems(["16", "32", "64", "128"])
         
         self.show()
@@ -261,35 +261,24 @@ class MyApp(QMainWindow):
             # need to load images from paths
             if self.nominal_path and self.defect_path:
                 nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
-                # defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]
                 
                 self.no_of_nominal_images = len(nominal_images_paths)
-                # self.no_of_defect_images = len(defect_images_paths)
                 
                 nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
                 nominal_loader_thread.start()
-
-                # defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
-                # defect_loader_thread.start()
                 
                 dialog_box = LoadingDialog(self, "Loading images", self.no_of_nominal_images)
                 dialog_box.exec()
                 
                 nominal_loader_thread.wait()
-                # defect_loader_thread.wait()
                 self.display_nominal_img()
                 
         if self.current_page == self.pages_dict["defect path"]:
             # need to load images from paths
             if self.nominal_path and self.defect_path:
-                # nominal_images_paths = [os.path.join(self.nominal_path, file) for file in os.listdir(self.nominal_path)]
                 defect_images_paths = [os.path.join(self.defect_path, file) for file in os.listdir(self.defect_path)]
                 
-                # self.no_of_nominal_images = len(nominal_images_paths)
                 self.no_of_defect_images = len(defect_images_paths)
-                
-                # nominal_loader_thread = WorkerThread(1, self.load_images, nominal_images_paths, self.nominal_images, mutex=self.total_images_mutex)
-                # nominal_loader_thread.start()
 
                 defect_loader_thread = WorkerThread(2, self.load_images, defect_images_paths, self.defect_images, mutex=self.total_images_mutex)
                 defect_loader_thread.start()
@@ -297,7 +286,6 @@ class MyApp(QMainWindow):
                 dialog_box = LoadingDialog(self, "Loading images", self.no_of_defect_images)
                 dialog_box.exec()
                 
-                # nominal_loader_thread.wait()
                 defect_loader_thread.wait()
                 self.display_defect_img()
                 
@@ -312,9 +300,7 @@ class MyApp(QMainWindow):
                             
             patchcore_setup_thread = WorkerThread(3, self.patchcore_setup)
             patchcore_setup_thread.start()  
-            
-            # self.patchcore_setup()
-            
+                        
             dialog_box = TrainingDialog(self)
             dialog_box.exec()
             

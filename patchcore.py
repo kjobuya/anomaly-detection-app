@@ -132,7 +132,8 @@ class PatchCore:
             
         return heatmap
     
-    def calculate_euclidean_distances(self, pts1: np.ndarray, pts2: np.ndarray, method = "tensor"):
+    @staticmethod
+    def calculate_euclidean_distances(pts1: np.ndarray, pts2: np.ndarray, method = "tensor"):
         assert len(pts1.shape) == 2
         assert len(pts2.shape) == 2
         assert method == "array" or method == "tensor"
@@ -140,7 +141,7 @@ class PatchCore:
         if method == "array":
             distances = sklearn_pairwise.euclidean_distances(pts1, pts2)
         elif method == "tensor":
-            pts1_tensor, pts2_tensor = torch.from_numpy(pts1).to(self.device), torch.from_numpy(pts2).to(self.device)
+            pts1_tensor, pts2_tensor = torch.from_numpy(pts1).to("cuda"), torch.from_numpy(pts2).to("cuda")
             distances = torch.cdist(pts1_tensor, pts2_tensor).cpu().numpy()
             
         return distances
